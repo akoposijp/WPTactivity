@@ -1,0 +1,132 @@
+<?php
+session_start();
+
+if (isset($_SESSION['userid'])) {
+    unset($_SESSION['userid']);
+    $_SESSION = array(); // reset session array
+    session_destroy();
+}
+//if (isset($_SESSION['userid'])) {
+//    if (isset($_GET['returnUrl'])) {
+//        header("Location: " + $_GET['returnUrl']);
+//    } else {
+//        header("Location: index.php");
+//    }
+//}
+
+$returnUrl = '';
+$message = '';
+if (isset($_SERVER['HTTP_REFERER'])) {
+    $returnUrl = $_SERVER['HTTP_REFERER'];
+}
+if (isset($_POST["referrer"])) {
+    $returnUrl = $_POST['referrer'];
+}
+
+$returnUrl = './users.php';
+
+include("./conf/conf.php");
+$dbConf = new AAConf();
+$databaseURL = $dbConf->get_databaseURL();
+$databaseUName = $dbConf->get_databaseUName();
+$databasePWord = $dbConf->get_databasePWord();
+$databaseName = $dbConf->get_databaseName();
+
+//Set DB Info. in-session
+$_SESSION['databaseURL'] = $databaseURL;
+$_SESSION['databaseUName'] = $databaseUName;
+$_SESSION['databasePWord'] = $databasePWord;
+$_SESSION['databaseName'] = $databaseName;
+
+#echo $_SERVER['HTTP_REFERER'];
+$connection = mysql_connect($databaseURL, $databaseUName, $databasePWord);
+// or die ("Error while connecting to localhost");
+$db = mysql_select_db($databaseName, $connection);
+
+if (isset($_POST['username']) && isset($_POST['password'])) {
+    $username = strip_tags($_POST["username"]);
+    $password = strip_tags($_POST["password"]);
+
+    if (!get_magic_quotes_gpc()) {
+        $username = addslashes($username);
+        $password = addslashes($password);
+    }
+
+    if (is_numeric($username))
+        $sql = "SELECT * FROM usertable where id_no=$username AND password='$password' AND administrator=2;";
+    else
+        $sql = "SELECT * FROM usertable where username='$username' AND password='$password' AND administrator=2;";
+    
+    $result = mysql_query($sql);
+    if ($result) {
+        if (mysql_num_rows($result) > 0) {
+            while ($myrow = mysql_fetch_array($result)) {
+                $_SESSION['userid'] = $myrow['id_no'];
+                if ($returnUrl != '' && strpos($returnUrl, 'login.php') <= 0) {
+                    header("Location: " . $returnUrl);
+                } else {
+                    header("Location: users.php");
+                }
+            }
+        } else {
+            $message = 'Invalid Credentials!';
+        }
+    } else {
+        $message = 'Invalid Credentials!';
+    }
+}
+?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+    <head>
+        <title>Time Recorder 1.0</title>
+        <meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+        <style media="all" type="text/css">@import "css/all.css";</style><link rel="icon" href="./favicon.ico" type="image/x-icon" />
+    </head>
+    <body onload="document.getElementById('username').focus();">
+        <div id="main">
+            <div id="header">
+                <a href="index.php" class="logo"><img src="img/logo.gif" width="101" height="29" alt="" /></a>
+            </div>
+            <div id="middle" style="min-height:500px;">
+                <div style="margin:auto; border: none; height: 200px; width: 250px; margin-top: 150px;">
+                    <form name="login_frm" id="login_frm" action="./login.php" method="POST">
+
+                        <input type="hidden" name="referrer" id="referrer" value="<?php print $returnUrl; ?>" />
+                        <table >
+
+                            <tr>
+                                <td colspan="2"><h1>Please login...</h1></td>
+                                <td></td>
+                            </tr><tr>
+                                <td colspan="2" style="color: blue; text-align: left;"><a title="Go to Homepage" href="./index.php" style="text-decoration: none; color: blue;">Time Recorder</a></td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>Username: </td>
+                                <td><input type="text" id="username" name="username" value="" /></td>
+                            </tr>
+                            <tr>
+                                <td>Password: </td>
+                                <td><input type="password" id="password" name="password" value="" /></td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td><input type="submit" value="Login" name="submitLogin" style="float: right;" /></td>
+                            </tr>
+                            <tr>
+                                <td colspan="2" style="color: red"><?php print $message; ?></td>
+                                <td></td>
+                            </tr>
+                        </table>
+                    </form>
+                </div>
+            </div>
+            <div id="footer"></div>
+        </div>
+    </body>
+</html>
+
+<?
+mysql_close();
+?>
